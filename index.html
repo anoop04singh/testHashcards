@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashCards Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .hidden { display: none; }
+        .card {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+        }
+        .balance {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2e7d32;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="initial-screen">
+        <h1>HashCard Access</h1>
+        <div class="button-group">
+            <button onclick="scanNFC()">Scan NFC Card</button>
+            <button onclick="showManualEntry()">Enter Manually</button>
+        </div>
+    </div>
+
+    <div id="manual-entry" class="hidden card">
+        <h2>Enter Card Details</h2>
+        <input type="number" id="tokenId" placeholder="Token ID">
+        <input type="text" id="proof" placeholder="Proof">
+        <button onclick="loadCard()">Load Card</button>
+    </div>
+
+    <div id="dashboard" class="hidden card">
+        <h2>Card Dashboard</h2>
+        <div class="balance">Balance: <span id="cardBalance">0</span> ETH</div>
+        <div class="button-group">
+            <button onclick="showAddBalance()">Add Balance</button>
+            <button onclick="redeemCard()">Redeem Card</button>
+        </div>
+    </div>
+
+    <div id="add-balance" class="hidden card">
+        <h2>Add Balance</h2>
+        <input type="number" id="amount" step="0.01" placeholder="Amount in ETH">
+        <button onclick="addBalance()">Confirm</button>
+    </div>
+
+    <script>
+        const contractAddress = "0xDb90f9280fC9c5E3849832766c4F96E9B294E084";
+        const contractABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"ERC721EnumerableForbiddenBatchMint","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721IncorrectOwner","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721InsufficientApproval","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC721InvalidApprover","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"ERC721InvalidOperator","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721InvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC721InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC721InvalidSender","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721NonexistentToken","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"ERC721OutOfBoundsIndex","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"BalanceAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"GiftCardMinted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"balanceRedeemed","type":"uint256"}],"name":"GiftCardRedeemed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"addBalance","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"viewBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"redeemGiftCard","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+
+        let contract;
+        let signer;
+        let currentTokenId;
+        let currentProof;
+
+        async function initializeContract() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask");
+                return;
+            }
+
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+        }
+
+        async function scanNFC() {
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    
+                    ndef.addEventListener("reading", ({ message }) => {
+                        const decoder = new TextDecoder();
+                        const data = JSON.parse(decoder.decode(message.records[0].data));
+                        currentTokenId = data.tokenId;
+                        currentProof = data.proof;
+                        loadCardDetails();
+                    });
+                } catch (error) {
+                    alert("NFC scanning failed: " + error);
+                }
+            } else {
+                alert("NFC not supported. Please enter details manually.");
+                showManualEntry();
+            }
+        }
+
+        function showManualEntry() {
+            document.getElementById('initial-screen').classList.add('hidden');
+            document.getElementById('manual-entry').classList.remove('hidden');
+        }
+
+        async function loadCard() {
+            currentTokenId = document.getElementById('tokenId').value;
+            currentProof = document.getElementById('proof').value;
+            await loadCardDetails();
+        }
+
+        async function loadCardDetails() {
+            await initializeContract();
+            try {
+                const balance = await contract.viewBalance(currentTokenId, currentProof);
+                document.getElementById('cardBalance').textContent = ethers.formatEther(balance);
+                document.getElementById('manual-entry').classList.add('hidden');
+                document.getElementById('initial-screen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+            } catch (error) {
+                alert("Error loading card: " + error.message);
+            }
+        }
+
+        function showAddBalance() {
+            document.getElementById('add-balance').classList.remove('hidden');
+        }
+
+        async function addBalance() {
+            const amount = document.getElementById('amount').value;
+            try {
+                const tx = await contract.addBalance(
+                    currentTokenId,
+                    currentProof,
+                    { value: ethers.parseEther(amount) }
+                );
+                await tx.wait();
+                alert("Balance added successfully!");
+                loadCardDetails();
+                document.getElementById('add-balance').classList.add('hidden');
+            } catch (error) {
+                alert("Error adding balance: " + error.message);
+            }
+        }
+
+        async function redeemCard() {
+            try {
+                const tx = await contract.redeemGiftCard(currentTokenId, currentProof);
+                await tx.wait();
+                alert("Card redeemed successfully!");
+                window.location.reload();
+            } catch (error) {
+                alert("Error redeeming card: " + error.message);
+            }
+        }
+
+        initializeContract();
+    </script>
+</body>
+</html>
