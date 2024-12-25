@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HashCards Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -50,7 +49,6 @@
 <body>
     <div id="initial-screen">
         <h1>HashCard Access</h1>
-        <button onclick="connectWallet()">Connect Wallet</button>
         <div class="button-group">
             <button onclick="scanNFC()">Scan NFC Card</button>
             <button onclick="showManualEntry()">Enter Manually</button>
@@ -81,42 +79,51 @@
 
     <script>
         const contractAddress = "0xDb90f9280fC9c5E3849832766c4F96E9B294E084";
-        const contractABI = [{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"addBalance","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"viewBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"redeemGiftCard","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+        const contractABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"ERC721EnumerableForbiddenBatchMint","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721IncorrectOwner","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721InsufficientApproval","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC721InvalidApprover","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"ERC721InvalidOperator","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721InvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC721InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC721InvalidSender","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721NonexistentToken","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"ERC721OutOfBoundsIndex","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"BalanceAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"GiftCardMinted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"balanceRedeemed","type":"uint256"}],"name":"GiftCardRedeemed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"addBalance","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"viewBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenID","type":"uint256"},{"internalType":"string","name":"proof","type":"string"}],"name":"redeemGiftCard","outputs":[],"stateMutability":"nonpayable","type":"function"}];
 
-        let provider;
-        let signer;
         let contract;
+        let signer;
         let currentTokenId;
         let currentProof;
 
-        async function connectWallet() {
-    try {
-        // Initialize WalletConnectProvider
-        const walletConnectProvider = new window.WalletConnectProvider.default({
-    rpc: {
-        11155111: "https://sepolia.infura.io/v3/3283beae02824999832c403c6af026b9",
-    },
-    bridge: "https://bridge.walletconnect.org", // Use WalletConnect's public bridge
-});
+        async function initializeContract() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask");
+                return;
+            }
 
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+        }
 
-        // Enable session (triggers QR Code modal)
-        await walletConnectProvider.enable();
+        async function scanNFC() {
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    
+                    ndef.addEventListener("reading", ({ message }) => {
+                        const decoder = new TextDecoder();
+                        const data = JSON.parse(decoder.decode(message.records[0].data));
+                        currentTokenId = data.tokenId;
+                        currentProof = data.proof;
+                        loadCardDetails();
+                    });
+                } catch (error) {
+                    alert("NFC scanning failed: " + error);
+                }
+            } else {
+                alert("NFC not supported. Please enter details manually.");
+                showManualEntry();
+            }
+        }
 
-        // Set up Ethers provider and signer
-        const provider = new ethers.BrowserProvider(walletConnectProvider);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-        alert("Wallet connected successfully!");
-        console.log("Wallet connected:", signer);
-    } catch (error) {
-        console.error("Error connecting wallet:", error);
-        alert("Failed to connect wallet. Check console for details.");
-    }
-}
-
-
+        function showManualEntry() {
+            document.getElementById('initial-screen').classList.add('hidden');
+            document.getElementById('manual-entry').classList.remove('hidden');
+        }
 
         async function loadCard() {
             currentTokenId = document.getElementById('tokenId').value;
@@ -125,14 +132,20 @@
         }
 
         async function loadCardDetails() {
+            await initializeContract();
             try {
                 const balance = await contract.viewBalance(currentTokenId, currentProof);
                 document.getElementById('cardBalance').textContent = ethers.formatEther(balance);
                 document.getElementById('manual-entry').classList.add('hidden');
+                document.getElementById('initial-screen').classList.add('hidden');
                 document.getElementById('dashboard').classList.remove('hidden');
             } catch (error) {
                 alert("Error loading card: " + error.message);
             }
+        }
+
+        function showAddBalance() {
+            document.getElementById('add-balance').classList.remove('hidden');
         }
 
         async function addBalance() {
@@ -146,6 +159,7 @@
                 await tx.wait();
                 alert("Balance added successfully!");
                 loadCardDetails();
+                document.getElementById('add-balance').classList.add('hidden');
             } catch (error) {
                 alert("Error adding balance: " + error.message);
             }
@@ -161,6 +175,8 @@
                 alert("Error redeeming card: " + error.message);
             }
         }
+
+        initializeContract();
     </script>
 </body>
 </html>
